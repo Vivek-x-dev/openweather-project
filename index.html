@@ -1,62 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            max-width: 400px;
-            margin: 50px auto;
-        }
-        button {
-            padding: 6px 10px;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="index.css" />
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>🌤️ Weather Dashboard</h1>
+        </div>
 
-<h2>Weather Dashboard</h2>
+        <div class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="city" 
+                    placeholder="Enter city name..."
+                    autocomplete="off"
+                >
+                <button onclick="getWeather()">Search</button>
+            </div>
+            <button class="secondary-btn" onclick="getWeatherByLocation()">📍 Use My Location</button>
+        </div>
 
-<input type="text" id="city" placeholder="Enter city">
-<button onclick="getWeather()">Get Weather</button>
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading weather data...</p>
+        </div>
 
-<pre id="result"></pre>
+        <div id="error" class="error hidden"></div>
 
-<script>
-async function getWeather() {
-    const city = document.getElementById("city").value;
-    const result = document.getElementById("result");
+        <div id="result" class="result hidden">
+            <div class="weather-card">
+                <div class="city-info">
+                    <h2 id="cityName"></h2>
+                </div>
+                <div class="weather-main">
+                    <div class="temperature">
+                        <span id="temp"></span>°C
+                    </div>
+                    <div class="description">
+                        <p id="weather"></p>
+                    </div>
+                </div>
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <span class="detail-icon">💧</span>
+                        <div>
+                            <p class="detail-label">Humidity</p>
+                            <p class="detail-value"><span id="humidity"></span>%</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-icon">💨</span>
+                        <div>
+                            <p class="detail-label">Wind Speed</p>
+                            <p class="detail-value"><span id="windSpeed"></span> m/s</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    if (!city) {
-        result.textContent = "Please enter a city name";
-        return;
-    }
+    <script>
+        // Allow Enter key to trigger search
+        document.getElementById("city").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                getWeather();
+            }
+        });
 
-    result.textContent = "Loading...";
+        async function getWeather() {
+            const city = document.getElementById("city").value.trim();
+            const resultDiv = document.getElementById("result");
+            const errorDiv = document.getElementById("error");
+            const loadingDiv = document.getElementById("loading");
 
-    const response = await fetch(
-        "https://ge9lgfu9w4.execute-api.us-east-1.amazonaws.com//weather?city=" + city
-    );
+            if (!city) {
+                showError("Please enter a city name");
+                return;
+            }
 
-    const data = await response.json();
+            showLoading();
 
-    if (data.error) {
-        result.textContent = data.error;
-        return;
-    }
+            try {
+                const response = await fetch(
+                    "https://ge9lgfu9w4.execute-api.us-east-1.amazonaws.com/weather?city=" + encodeURIComponent(city)
+                );
 
-    result.textContent =
-        `City: ${data.city}
-Temperature: ${data.temperature} °C
-Weather: ${data.description}
-Humidity: ${data.humidity} %
-Wind Speed: ${data.wind_speed} m/s`;
-}
-</script>
+                const data = await response.json();
 
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                displayWeather(data);
+                hideError();
+            } catch (error) {
+                showError("Failed to fetch weather data. Please try again.");
+                console.error("Error:", error);
+            }
+        }
+
+        function getWeatherByLocation() {
+            if (navigator.geolocation) {
+                showLoading();
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    // You can use lat/lon if your API supports it
+                    showError("Location-based search requires API support for coordinates");
+                }, (error) => {
+                    showError("Unable to access your location");
+                });
+            } else {
+                showError("Geolocation is not supported by your browser");
+            }
+        }
+
+        function displayWeather(data) {
+            document.getElementById("cityName").textContent = data.city;
+            document.getElementById("temp").textContent = data.temperature;
+            document.getElementById("weather").textContent = data.description;
+            document.getElementById("humidity").textContent = data.humidity;
+            document.getElementById("windSpeed").textContent = data.wind_speed;
+
+            document.getElementById("result").classList.remove("hidden");
+            document.getElementById("loading").classList.add("hidden");
+            document.getElementById("error").classList.add("hidden");
+        }
+
+        function showLoading() {
+            document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("result").classList.add("hidden");
+            document.getElementById("error").classList.add("hidden");
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById("error");
+            errorDiv.textContent = message;
+            errorDiv.classList.remove("hidden");
+            document.getElementById("loading").classList.add("hidden");
+            document.getElementById("result").classList.add("hidden");
+        }
+
+        function hideError() {
+            document.getElementById("error").classList.add("hidden");
+        }
+    </script>
 </body>
 </html>
